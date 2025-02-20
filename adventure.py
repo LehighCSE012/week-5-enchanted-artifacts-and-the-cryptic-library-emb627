@@ -66,6 +66,7 @@ def use_item(inventory):
     return inventory
 
 def find_clue(clues, new_clue):
+    """Allows player to find clues and add them to clue set for use"""
     if new_clue in clues:
         print("You already know this clue.")
     else:
@@ -92,6 +93,7 @@ def discover_artifact(player_stats, artifacts, artifact_name):
             elif artifacts[artifact_name]["effect"] == "solves puzzles":
                 print(f"This artifact {artifacts[artifact_name]["effect"]}.")
             artifacts[artifact_name].update({"discovered": True})
+            del artifacts[artifact_name]
             #Dict method 2: update() allows me to add a new key-value pair to the artifact dict,
             #so that I can track which artifacts were already discovered
     else:
@@ -109,7 +111,8 @@ def combat_encounter(player_stats, monster_health, has_treasure):
         display_player_status(player_stats["health"])
 
         #Monster's turn
-        monster_attack(player_stats)
+        player_stats["health"] = monster_attack(player_stats)
+
 
     #Win/Loss check
     if player_stats["health"] <= 0:
@@ -139,45 +142,30 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
 
         if room[2] == "trap": #Path if the player enters the lava trap room
             print("You see a potential trap!")
-            trap_choice = input("Disarm or bypass the trap?")
-            if trap_choice == "disarm": #If the player attempts to disarm the trap
-                success = random.choice([True, False])
-                if success:
-                    print(f"{room[3][0]}")
-                    player_stats["health"] = player_stats["health"] + room[3][2]
-                    if player_stats["health"] <= 0:
-                        print("Oh no, you have died!")
-                        break
-                else:
-                    print(f"{room[3][1]}")
-                    player_stats["health"] = player_stats["health"] + room[3][2]
-                    if player_stats["health"] <= 0:
-                        print("Oh no, you have died!")
-                        break
-            else: #If the player chooses to bypass the trap
-                success = random.choice([True, False, False])
-                if success:
-                    print("You gained nothing, move on.")
-                else:
-                    print(f"{room[3][1]}")
-                    player_stats["health"] = player_stats["health"] + room[3][2]
-                    if player_stats["health"] <= 0:
-                        print("Oh no, you have died!")
-                        break
-                display_inventory(inventory)
+            success = random.choice([True, False])
+            if success:
+                print(f"{room[3][0]}")
+                player_stats["health"] = player_stats["health"] + room[3][2]
+                if player_stats["health"] <= 0:
+                    print("Oh no, you have died!")
+                    break
+            else:
+                print(f"{room[3][1]}")
+                player_stats["health"] = player_stats["health"] + room[3][2]
+                if player_stats["health"] <= 0:
+                    print("Oh no, you have died!")
+                    break
+            display_inventory(inventory)
 
         elif room[2] == "puzzle": #Path if the player enters the chest puzzle room
             print("You encounter a puzzle!")
-            if bypass_ability:
+            if bypass_ability:#Path if the player has the staff of wisdom's bypass ability
                 bypass = input("Do you want to use the staff of wisdom?")
                 if bypass == "yes":
                     print("You have used your knowledge to bypass this puzzle.")
                     player_stats["health"] = player_stats["health"] + room[3][2]
                     bypass_ability = False
-
-            else:
-                puzzle_choice = input("Solve or skip?")
-                if puzzle_choice == "solve": 
+            else: #Path if the player does not have the staff of wisdom or chose not to use it
                     success = random.choice([True, False])
                     if success: #Path if the player solves the puzzle
                         print(f"{room[3][0]}")
@@ -191,19 +179,10 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
                         if player_stats["health"] <= 0:
                             print("Oh no, you have died!")
                             break
-                else: #If the player chooses to skip the puzzle
-                    success = random.choice([True, False, False])
-                    if success:
-                        print("You gained nothing, move on.")
-                    else:
-                        print(f"{room[3][1]}")
-                        player_stats["health"] = player_stats["health"] + room[3][2]
-                        if player_stats["health"] <= 0:
-                            print("Oh no, you have died!")
-                            break
             display_inventory(inventory)
 
         elif room[2] == "library": #Path if the player enters the library
+            print("You enter the Cryptic Library.")
             clue_list = [
                 "Look behind the potraits.",
                 "Maybe the monster knows more than you think.",
@@ -215,13 +194,14 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
                 new_clue = clue
                 clues = find_clue(clues, new_clue)
             if "staff_of_wisdom" in inventory:
+                print("The Staff of Wisdom hums in your hand")
                 print("You understand the meaning of the clues and can now bypass a puzzle challenge in another room.")
                 bypass_ability = True
         else: #Path if the player enters the maze with no challenge
             print("There doesn't seem to be a challenge in this room. You move on.")
             display_inventory(inventory)
     display_player_status(player_stats)
-    return player_stats, inventory, bypass_ability
+    return player_stats, inventory
 
 def main():
     """Main game logic with initialized variables"""
@@ -231,7 +211,7 @@ def main():
                      ("A dark room with portraits and locked chest", "pile of gold coins", "puzzle",
                       ("You unlocked the chest!", "The chest remains locked.", -5)),
                       ("A vast library filled with ancient, cryptic texts.", None, "library", None)]
-    
+
     artifacts = {
         "magic_potion": {
             "description": "a blue potion that heals your injuries when drank.",
@@ -258,10 +238,6 @@ def main():
     inventory = [ ]
     bypass_ability = False
 
-    #Demonstrating tuple immutability: The following line will cause a TypeError
-    #because tuples cannot be modified after they are created
-    dungeon_rooms[1][1] = "magic potion"
-
     has_treasure = random.choice([True, False]) # Randomly assigns treasure
 
     display_player_status(player_stats)
@@ -273,15 +249,15 @@ def main():
 
     if random.random() < 0.3:
         artifact_keys = list(artifacts.keys())
-        #Dict method 3: keys() creates a list of all the keys in the artifacts dictionary, in this case,
-        #it creates a list of artifact_names so that one can by randomly discovered
+        #Dict method 3: keys() creates a list of all the keys in the artifacts dictionary, in this
+        #case, it creates a list of artifact_names so that one can by randomly discovered
         if artifact_keys:
             artifact_name = random.choice(artifact_keys)
             player_stats, artifacts = discover_artifact(player_stats, artifacts, artifact_name)
             display_player_status(player_stats)
     
     if player_stats["health"] > 0:
-        player_stats, inventory, clues = enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
+        player_stats, inventory, clues = enter_dungeon(player_stats, inventory, dungeon_rooms, clues)
         print("\n ---Game End---")
         display_player_status(player_stats)
         print("Final inventory:")
