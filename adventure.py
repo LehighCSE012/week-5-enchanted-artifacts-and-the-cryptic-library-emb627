@@ -121,7 +121,7 @@ def check_for_treasure(has_treasure):
     else:
         print("The monster did not have the treasure. You continue your journey.")
 
-def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, artifacts):
+def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability):
     """Takes player through each of the dungeon rooms"""
     for room in dungeon_rooms:
         print(f"You enter {room[0]}!")
@@ -160,25 +160,21 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, artifacts):
 
         elif room[2] == "puzzle": #Path if the player enters the chest puzzle room
             print("You encounter a puzzle!")
-            if "staff_of_wisdom" in inventory:
+            if bypass_ability:
                 bypass = input("Do you want to use the staff of wisdom?")
                 if bypass == "yes":
-                    bypass_success = random.choice([True, False])
-                    if bypass_success:
-                        print(f"{room[3][0]}")
-                        player_stats["health"] = player_stats["health"] + room[3][2]
-                        if player_stats["health"] <= 0:
-                            print("Oh no, you have died!")
-                            break
+                    print("You have used your knowledge to bypass this puzzle.")
+                    player_stats["health"] = player_stats["health"] + room[3][2]
+                    bypass_ability = False
+
             else:
-                print("You must continue to the puzzle.")
                 puzzle_choice = input("Solve or skip?")
                 if puzzle_choice == "solve": 
                     success = random.choice([True, False])
                     if success: #Path if the player solves the puzzle
                         print(f"{room[3][0]}")
                         player_stats["health"] = player_stats["health"] + room[3][2]
-                        if player_stats["health"] <= 0:                           
+                        if player_stats["health"] <= 0:
                             print("Oh no, you have died!")
                             break
                     else: #Path if player fails to solve puzzle
@@ -212,11 +208,12 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, artifacts):
                 clues = find_clue(clues, new_clue)
             if "staff_of_wisdom" in inventory:
                 print("You understand the meaning of the clues and can now bypass a puzzle challenge in another room.")
+                bypass_ability = True
         else: #Path if the player enters the maze with no challenge
             print("There doesn't seem to be a challenge in this room. You move on.")
             display_inventory(inventory)
     display_player_status(player_stats)
-    return player_stats, inventory, clues
+    return player_stats, inventory
 
 def main():
     """Main game logic with initialized variables"""
@@ -269,7 +266,7 @@ def main():
         player_stats, inventory = enter_dungeon(player_stats, inventory, dungeon_rooms)
         #Unpacking tuple of enter_dungeon return statements if the player is still alive
     
-    artifact_name = random.choice[artifacts.keys()]
+    artifact_name = random.choice([artifacts.keys()])
     player_stats, artifacts, inventory = discover_artifact(player_stats, artifacts, artifact_name)
 
 if __name__ == "__main__":
