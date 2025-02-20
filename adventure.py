@@ -70,24 +70,32 @@ def find_clue(clues, new_clue):
         print("You already know this clue.")
     else:
         clues.add(new_clue)
+        #Set method 1: add() allows me to add the new_clue into the clues set
         print(f"You discovered a new clue: {new_clue}.")
     return clues
 
 def discover_artifact(player_stats, artifacts, artifact_name):
     """Allows player to find an artifact, use its effect, then remove it from the dictionary"""
     if artifact_name in artifacts:
-        print(f"You discovered {artifacts[artifact_name]["description"]}.")
-        if artifacts[artifact_name]["effect"] == "increases health":
-            player_stats["health"] = player_stats["health"] + artifacts[artifact_name]["power"]
-            print(f"This artifact {artifacts[artifact_name]["effect"]}.")
-        elif artifacts[artifact_name]["effect"] == "enhances attack":
-            player_stats["attack"] = player_stats["attack"] + artifacts[artifact_name]["power"]
-            print(f"This artifact {artifacts[artifact_name]["effect"]}.")
-        elif artifacts[artifact_name]["effect"] == "solves puzzles":
-            print(f"This artifact {artifacts[artifact_name]["effect"]}.")
+        if artifacts[artifact_name].get("discovered", False):
+            #Dict method 1: get() allows me to access the discovered key if it exists but
+            #won't give me a KeyError if it doesn't
+            print("You've alerady discovered this item.")
+        else:
+            print(f"You discovered {artifacts[artifact_name]["description"]}.")
+            if artifacts[artifact_name]["effect"] == "increases health":
+                player_stats["health"] = player_stats["health"] + artifacts[artifact_name]["power"]
+                print(f"This artifact {artifacts[artifact_name]["effect"]}.")
+            elif artifacts[artifact_name]["effect"] == "enhances attack":
+                player_stats["attack"] = player_stats["attack"] + artifacts[artifact_name]["power"]
+                print(f"This artifact {artifacts[artifact_name]["effect"]}.")
+            elif artifacts[artifact_name]["effect"] == "solves puzzles":
+                print(f"This artifact {artifacts[artifact_name]["effect"]}.")
+            artifacts[artifact_name].update({"discovered": True})
+            #Dict method 2: update() allows me to add a new key-value pair to the artifact dict,
+            #so that I can track which artifacts were already discovered
     else:
         print("You found nothing of interest.")
-    artifacts.pop(artifact_name)
     return player_stats, artifacts
 
 def combat_encounter(player_stats, monster_health, has_treasure):
@@ -213,7 +221,7 @@ def enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
             print("There doesn't seem to be a challenge in this room. You move on.")
             display_inventory(inventory)
     display_player_status(player_stats)
-    return player_stats, inventory
+    return player_stats, inventory, bypass_ability
 
 def main():
     """Main game logic with initialized variables"""
@@ -242,13 +250,13 @@ def main():
         }
     }
 
-    clues = { }
-
+    #Initialized variables
+    clues = set()
     player_stats = {"health": 100, "attack": 5}
     has_treasure = False
-    monster_health = 60 # Hardcoded health value
-    inventory = [ ] #Inventory initialized to empty
-
+    monster_health = 60
+    inventory = [ ]
+    bypass_ability = False
 
     #Demonstrating tuple immutability: The following line will cause a TypeError
     #because tuples cannot be modified after they are created
@@ -256,18 +264,35 @@ def main():
 
     has_treasure = random.choice([True, False]) # Randomly assigns treasure
 
+    display_player_status(player_stats)
     player_stats = handle_path_choice(player_stats)
 
     treasure_obtained_in_combat = combat_encounter(player_stats, monster_health, has_treasure)
 
     check_for_treasure(treasure_obtained_in_combat) # Or has_treasure, depending on logic
 
-    if player_stats["health"] > 0:
-        player_stats, inventory = enter_dungeon(player_stats, inventory, dungeon_rooms)
-        #Unpacking tuple of enter_dungeon return statements if the player is still alive
+    if random.random() < 0.3:
+        artifact_keys = list(artifacts.keys())
+        #Dict method 3: keys() creates a list of all the keys in the artifacts dictionary, in this case,
+        #it creates a list of artifact_names so that one can by randomly discovered
+        if artifact_keys:
+            artifact_name = random.choice(artifact_keys)
+            player_stats, artifacts = discover_artifact(player_stats, artifacts, artifact_name)
+            display_player_status(player_stats)
     
-    artifact_name = random.choice([artifacts.keys()])
-    player_stats, artifacts, inventory = discover_artifact(player_stats, artifacts, artifact_name)
+    if player_stats["health"] > 0:
+        player_stats, inventory, clues = enter_dungeon(player_stats, inventory, dungeon_rooms, clues, bypass_ability)
+        print("\n ---Game End---")
+        display_player_status(player_stats)
+        print("Final inventory:")
+        display_inventory(inventory)
+        print("Clues:")
+        if clues:
+            for clue in clues:
+                #Set method 2: the "in" operator allows me to iterate through each clue in the clues set and print it
+                print(f"-{clue}")
+        else:
+            print("No clues.")
 
 if __name__ == "__main__":
     main()
